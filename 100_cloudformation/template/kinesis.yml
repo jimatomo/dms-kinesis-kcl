@@ -1,0 +1,24 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: kinesis data streams
+Parameters:
+  PJPrefix:
+    Type: String
+    Default: dms-kinesis-kcl
+    Description: Enter resource name prefix
+
+Resources:
+  kinesisStream:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      Name: !Sub ${PJPrefix}-kds-001
+      RetentionPeriodHours: 24
+      ShardCount: 1
+      # StreamEncryption:
+      #   EncryptionType: KMS
+      #   KeyId:  # The GUID for the customer-managed KMS key to use for encryption
+
+Outputs:
+  KinesisStreamArn:
+    Value: !GetAtt kinesisStream.Arn
+    Export:
+      Name: !Sub ${PJPrefix}-kds-arn-001

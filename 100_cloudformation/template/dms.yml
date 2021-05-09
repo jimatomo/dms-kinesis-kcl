@@ -1,0 +1,88 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: AWS Database Migration Service
+Parameters:
+  PJPrefix:
+    Type: String
+    Default: dms-kinesis-kcl
+    Description: Enter resource name prefix
+  Username:
+    Description: DB mater username.
+    Type: String
+    Default: postgres
+  MasterUserPassword:
+    Description: DB mater user password.
+    Type: String
+    NoEcho: true
+  DMSTaskSetting:
+    Description: DMS Task Setting json text
+    Type: String
+  DMSTableMapping:
+    Description: DMS Table Mapping json text
+    Type: String
+
+Resources:
+  dmsSubnetGroup:
+    Type: AWS::DMS::ReplicationSubnetGroup
+    Properties:
+      ReplicationSubnetGroupDescription: for dms-kinesis-kcl tutorial
+      ReplicationSubnetGroupIdentifier: !Sub ${PJPrefix}-dms-subnet-group
+      SubnetIds:
+        - Fn::ImportValue: !Sub "${PJPrefix}-public-subnet-a"
+        - Fn::ImportValue: !Sub "${PJPrefix}-public-subnet-c"
+
+  dmsInstance:
+    Type: AWS::DMS::ReplicationInstance
+    Properties:
+      AllocatedStorage: 50
+      AvailabilityZone: ap-northeast-1a
+      #KmsKeyId: String
+      MultiAZ: false
+      PubliclyAccessible: true
+      ReplicationInstanceClass: dms.t3.micro
+      ReplicationInstanceIdentifier: !Sub ${PJPrefix}-dms-instance
+      ReplicationSubnetGroupIdentifier: !Ref dmsSubnetGroup
+      ResourceIdentifier: dms-instance-001
+      VpcSecurityGroupIds:
+        - Fn::ImportValue: !Sub "${PJPrefix}-dms-security-group-001"
+
+  sourceEndpoint:
+    Type: AWS::DMS::Endpoint
+    Properties:
+      DatabaseName: streaming_db
+      EndpointIdentifier: !Sub ${PJPrefix}-dms-source-endpoint-001
+      EndpointType: source
+      EngineName: aurora-postgresql
+      #ExtraConnectionAttributes: String
+      Password: !Ref MasterUserPassword
+      Port: 5432
+      #PostgreSqlSettings:
+      #  PostgreSqlSettings
+      ServerName:
+        Fn::ImportValue: !Sub ${PJPrefix}-aurora-cluster-endpoint
+      Username: !Ref Username
+
+  targetEndpoint:
+    Type: AWS::DMS::Endpoint
+    Properties:
+      EndpointIdentifier: !Sub ${PJPrefix}-dms-target-endpoint-001
+      EndpointType: target
+      EngineName: kinesis
+      #ExtraConnectionAttributes: String
+      KinesisSettings:
+        MessageFormat: json
+        ServiceAccessRoleArn:
+          Fn::ImportValue: !Sub "${PJPrefix}-dms-role-001"
+        StreamArn:
+          Fn::ImportValue: !Sub ${PJPrefix}-kds-arn-001
+
+  dmsReplicationTask:
+    Type: AWS::DMS::ReplicationTask
+    Properties:
+      MigrationType: cdc
+      ReplicationInstanceArn: !Ref dmsInstance
+      ReplicationTaskIdentifier: !Sub ${PJPrefix}-dms-rep-task-001
+      ReplicationTaskSettings: !Ref DMSTaskSetting
+      ResourceIdentifier: dms-task-001
+      SourceEndpointArn: !Ref sourceEndpoint
+      TableMappings: !Ref DMSTableMapping
+      TargetEndpointArn: !Ref targetEndpoint

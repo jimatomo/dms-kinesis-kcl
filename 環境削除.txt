@@ -1,0 +1,8 @@
+手動で削除するもの
+　KCLが利用するDynamoDBテーブル
+　Auroraのスナップショット
+  CloudWatch Logs
+  SSM Parameter Storeのマスターパスワード
+
+
+

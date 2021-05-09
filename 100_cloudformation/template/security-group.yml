@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Security Group
+
+Parameters:
+  PJPrefix:
+    Type: String
+    Default: dms-kinesis-kcl
+    Description: Enter resource name prefix
+  cloud9SG:
+    Type: String
+    Description: Your Cloud9 instance's security group id
+
+Resources:
+  # AWS DMS Security Group
+  dmsSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub "${PJPrefix}-dms-SG-001"
+      GroupDescription: AWS DMS
+      VpcId:
+        Fn::ImportValue: !Sub "${PJPrefix}-vpc"
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-dms-SG-001"
+
+  # Aurora PostgreSQL Security Group
+  auroraSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub "${PJPrefix}-aurora-SG-001"
+      GroupDescription: Aurora PostgreSQL
+      VpcId:
+        Fn::ImportValue: !Sub "${PJPrefix}-vpc"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref cloud9SG
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref dmsSG
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJPrefix}-aurora-SG-001"
+
+Outputs:
+  auroraSGID:
+    Value: !Ref auroraSG
+    Export:
+      Name: !Sub "${PJPrefix}-aurora-security-group-001"
+  dmsSGID:
+    Value: !Ref dmsSG
+    Export:
+      Name: !Sub "${PJPrefix}-dms-security-group-001"

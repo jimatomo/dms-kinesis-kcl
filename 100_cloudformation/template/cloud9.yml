@@ -1,0 +1,28 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Cloud9 environment
+
+# ------------------------------------------------------------#
+# Input Parameters
+# ------------------------------------------------------------#
+Parameters:
+  PJPrefix:
+    Type: String
+    Default: dms-kinesis-kcl
+    Description: Enter resource name prefix
+
+Resources:
+# ------------------------------------------------------------#
+# Cloud9 environment
+# ------------------------------------------------------------#
+  cloud9instancd:
+    Type: AWS::Cloud9::EnvironmentEC2
+    Properties:
+      AutomaticStopTimeMinutes: 15
+      ConnectionType: CONNECT_SSH
+      Description: Aurora PostgreSQL -> DMS -> kinesis -> cloud9 kcl
+      ImageId: amazonlinux-2-x86_64
+      InstanceType: t2.micro
+      Name: !Sub "${PJPrefix}-cloud9-env-001"
+      SubnetId:
+        Fn::ImportValue: !Sub "${PJPrefix}-public-subnet-a"
+

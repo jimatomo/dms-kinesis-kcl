@@ -1,0 +1,112 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Aurora PostgreSQL
+Parameters:
+  PJPrefix:
+    Type: String
+    Default: dms-kinesis-kcl
+    Description: Enter resource name prefix
+  Username:
+    Description: Name of DB mater username.
+    Type: String
+    Default: postgres
+  MasterUserPasswordSSMParam:
+    Description: Name of DB mater user password.
+    Type: String
+
+Resources:
+  # Aurora PostgreSQL
+  RDSCluster:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      MasterUsername: !Ref Username
+      MasterUserPassword:
+        !Sub '{{resolve:ssm-secure:${MasterUserPasswordSSMParam}}}'
+      Engine: aurora-postgresql
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      DBClusterParameterGroupName: !Ref RDSDBClusterParameterGroup
+      VpcSecurityGroupIds:
+        - Fn::ImportValue: !Sub "${PJPrefix}-aurora-security-group-001"
+      BackupRetentionPeriod: 1
+      DatabaseName: streaming_db
+      DBClusterIdentifier: !Sub ${PJPrefix}-aurora-posgresql
+      EngineMode: provisioned
+      Port: 5432
+      # AWS DMSがサポートしている最新のバージョンは11.8（2021/05/03時点）
+      EngineVersion: 11.8
+      StorageEncrypted: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${PJPrefix}-aurora-posgre-cluster
+
+  RDSDBInstance1:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      DBParameterGroupName: !Ref RDSDBParameterGroup
+      Engine: aurora-postgresql
+      DBClusterIdentifier: !Ref RDSCluster
+      AvailabilityZone: ap-northeast-1a
+      DBInstanceClass: db.t3.medium
+      CopyTagsToSnapshot: true
+      DBInstanceIdentifier: !Sub ${PJPrefix}-aurora-posgresql-1
+      MonitoringInterval: 60
+      MonitoringRoleArn:
+        Fn::ImportValue: !Sub "${PJPrefix}-rds-monitoring-role-001"
+      PubliclyAccessible: false
+      PromotionTier: 1
+      Tags:
+        - Key: Name
+          Value: !Sub ${PJPrefix}-aurora-posgresql-1
+
+
+  # DB subnet group
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupName: !Sub ${PJPrefix}-db-subnet-group
+      DBSubnetGroupDescription: !Sub ${PJPrefix}-db-subnet-group
+      SubnetIds:
+        - Fn::ImportValue: !Sub "${PJPrefix}-private-subnet-a"
+        - Fn::ImportValue: !Sub "${PJPrefix}-private-subnet-c"
+      Tags:
+        - Key: Name
+          Value: !Sub ${PJPrefix}-db-subnet-group
+
+  # DB Cluster Parameter Group
+  RDSDBClusterParameterGroup:
+    Type: AWS::RDS::DBClusterParameterGroup
+    Properties:
+      Description: !Sub ${PJPrefix}-db-cluster-param-group
+      Family: aurora-postgresql11
+      Parameters:
+        client_encoding: UTF8
+        max_replication_slots: 10
+        max_wal_senders: 10
+        wal_sender_timeout: 0
+        rds.logical_replication: 1
+        shared_preload_libraries: pglogical,pg_stat_statements
+        track_commit_timestamp: 1
+
+      Tags:
+        - Key: Name
+          Value: !Sub ${PJPrefix}-db-cluster-param-group
+
+  # DB parameter group
+  RDSDBParameterGroup:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Description: !Sub ${PJPrefix}-db-param-group
+      Family: aurora-postgresql11
+      Tags:
+        - Key: Name
+          Value: !Sub ${PJPrefix}-db-param-group
+
+Outputs:
+  auroraClusterEndpoint:
+    Value: !GetAtt RDSCluster.Endpoint.Address
+    Export:
+      Name: !Sub ${PJPrefix}-aurora-cluster-endpoint
+  auroraReadEndpoint:
+    Value: !GetAtt RDSCluster.ReadEndpoint.Address
+    Export:
+      Name: !Sub ${PJPrefix}-aurora-reader-endpoint

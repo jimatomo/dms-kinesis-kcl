@@ -1,0 +1,2 @@
+PJ_PREFIX=dms-kinesis-kcl
+MASTER_PASSWD=/dms-kinesis-kcl/aurora-admin-password

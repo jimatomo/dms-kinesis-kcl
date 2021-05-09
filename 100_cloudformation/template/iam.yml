@@ -1,0 +1,139 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: IAM Policy and Role
+Parameters:
+  PJPrefix:
+    Type: String
+    Default: dms-kinesis-kcl
+    Description: Enter resource name prefix
+
+Resources:
+  # DMS Service Role
+  dmsIamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${PJPrefix}-dms-role-001"
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - dms.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: !Sub "${PJPrefix}-dms-exec-policy-001"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "kinesis:DescribeStream"
+                  - "kinesis:PutRecord"
+                  - "kinesis:PutRecords"
+                Resource: !Sub "arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/*"
+
+  # RDS Monitoring Role
+  RDSMonitoringRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${PJPrefix}-rds-monitoring-role
+      Path: /
+      AssumeRolePolicyDocument:
+        !Sub |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "monitoring.rds.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          }
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole
+
+  # Cloud9 Role (need for KCL)
+  KCLRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${PJPrefix}-kcl-exec-role
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: !Sub ${PJPrefix}-kcl-exec-policy-001
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - ssm:GetParameters
+                  - ssm:GetParameter
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - kinesis:DescribeStream
+                  - kinesis:GetShardIterator
+                  - kinesis:GetRecords
+                  - kinesis:ListShards
+                  - kinesis:DescribeStreamSummary
+                  - kinesis:RegisterStreamConsumer
+                  - kinesis:SubscribeToShard
+                  - kinesis:DescribeStreamConsumer
+                Resource:
+                  !Sub "arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/*"
+              - Effect: Allow
+                Action:
+                  - dynamodb:CreateTable
+                  - dynamodb:DeleteItem
+                  - dynamodb:DescribeTable
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:Scan
+                  - dynamodb:UpdateItem
+                Resource:
+                  !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/*"
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+              # for get cloudformation Output
+              - Effect: Allow
+                Action:
+                  - cloudformation:Describe*
+                Resource: "*"
+
+  # instance prifile for cloud9
+  cloud9InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub ${PJPrefix}-kcl-exec-role
+      Path: /
+      Roles:
+        - !Ref KCLRole
+
+Outputs:
+  dmsIamRoleARN:
+    Value: !GetAtt dmsIamRole.Arn
+    Export:
+      Name: !Sub "${PJPrefix}-dms-role-001"
+  rdsMonitoringIamRoleARN:
+    Value: !GetAtt RDSMonitoringRole.Arn
+    Export:
+      Name: !Sub "${PJPrefix}-rds-monitoring-role-001"
+  cloud9IamRoleARN:
+    Value: !GetAtt KCLRole.Arn
+    Export:
+      Name: !Sub "${PJPrefix}-kcl-role-001"

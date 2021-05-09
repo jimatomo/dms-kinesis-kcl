@@ -1,0 +1,29 @@
+{
+  "rules": [
+      {
+          "rule-type": "selection",
+          "rule-id": "1",
+          "rule-name": "1",
+          "object-locator": {
+              "schema-name": "public",
+              "table-name": "source_tbl"
+          },
+          "rule-action": "include",
+          "filters": []
+      },
+      {
+          "rule-type": "object-mapping",
+          "rule-id": "2",
+          "rule-name": "2",
+          "rule-action": "map-record-to-record",
+          "target-table-name": "source_tbl",
+          "object-locator": {
+              "schema-name": "public",
+              "table-name": "source_tbl"
+          },
+          "mapping-parameters": {
+              "partition-key-type": "schema-table"
+          }
+      }
+  ]
+}
