@@ -34,6 +34,15 @@ cd 100_cloudformation
 2) set up cloud9 environment
 Please read interactive command text file "commandOnCloud9.sh"
 
+Change The Endpoint address(in sample1_kcl_app.py and sample2_kcl_app.py)
+```
+        # DB connection parameters
+        self.pghost = 'dms-kinesis-kcl-aurora-posgresql.cluster-coqptnsxlyvd.ap-northeast-1.rds.amazonaws.com'
+        self.pgport = '5432'
+        self.pgdbname = 'streaming_db'
+        self.pguser = 'postgres'
+        self.pgpassword = self.get_parameters('/dms-kinesis-kcl/aurora-admin-password')
+```
 # Note
 
 After you finish tutorial, Delete the environment.
@@ -41,4 +50,4 @@ After you finish tutorial, Delete the environment.
 課金が発生するので、環境削除を忘れないようにしてください。
 
 このチュートリアルの詳細は以下のブログに書いておきます。
-＜ToDo: 出来上がったら更新＞
+https://jimatomo.hatenablog.com/entry/aws/dms-kinesis-kcl
